@@ -41,26 +41,25 @@ public class MusicCatalogCommander
     public static void Run()
     {
         ShowNotes();
-        //Запросим тип каталога
-        int type = 0;
-        do
-        {
-            int.TryParse(ReadString("Укажите тип каталога (1-xml, 2-json,3-SQLite)"), out type);
-        } while (type < 1 || type > 3);
-        //Запросим имя каталога
-        string catalogName = ReadString("\nУкажите имя музыкального каталога?");        
-    
+        
         //Создаем каталог и передаем его коммандеру
-        MusicCatalogCommander commander = new (CreateMusicCatalog(catalogName,type));
+        MusicCatalogCommander commander = new (CreateMusicCatalog());
 
+        commander.CommandsLoop();
+    }
+    /// <summary>
+    /// Цикл опроса данных от консоли
+    /// </summary>
+    public void CommandsLoop()
+    {
         //Цикл работы с коммандером
-        while (!commander.IsRedyToExit )
+        while (!IsRedyToExit)
         {
             try
             {
                 WriteLine("\nВведите команду: ");
 
-                if (commander.Commands.TryGetValue(
+                if (Commands.TryGetValue(
                     (ReadLine() ?? "").ToUpper(),
                     out Action? action))
                 {
@@ -71,7 +70,7 @@ public class MusicCatalogCommander
                     WriteLine("Введена неверная команда. Попробуйте снова.");
                 }
             }
-            catch(Exception e) 
+            catch (Exception e)
             {
                 WriteLine("\nОшибка !");
                 WriteLine(e.Message);
@@ -138,7 +137,7 @@ public class MusicCatalogCommander
         PrintSongs("\nСписок всех песен:", catalog.EnumerateAllCompositions());
     }
     /// <summary>
-    /// Метод выводит на консоль перечнь композиций
+    /// Метод выводит на консоль перечень композиций
     /// </summary>
     /// <param name="header">Заголовок перечня композиций</param>
     /// <param name="songs">Enumerator для перебора композиций</param>
@@ -159,7 +158,7 @@ public class MusicCatalogCommander
         WriteLine($"Удалено {catalog.Remove(ReadString("Что удаляем?:"))} песен.");
     }
     /// <summary>
-    ///  Выполняет команду пользователя на вывод на консоль перечня комспозиций, удовлетворяющих
+    ///  Выполняет команду пользователя на вывод на консоль перечня композиций, удовлетворяющих
     ///  заданному критерию поиска
     /// </summary>
     public void Search()
@@ -173,25 +172,34 @@ public class MusicCatalogCommander
     {
         IsRedyToExit = true;
     }
-    public bool IsRedyToExit {get; private set;}
+    private bool IsRedyToExit {get; set;}
     #endregion
 
     #region Методы для создания папки хранения каталога, имения файла музыкального каталога
     /// <summary>
     /// Создает класс для работы с музыкальным каталогам по указанным параметрам
     /// </summary>
-    /// <param name="catalogName">Имя каталога</param>
-    /// <param name="serializationType">Тип сериализации</param>
     /// <returns></returns>
-    private static IMusicCatalog CreateMusicCatalog(string catalogName, int serializationType)
+    private static IMusicCatalog CreateMusicCatalog()
     {
+        //Запросим тип каталога
+        int type = 0;
+        do
+        {
+            int.TryParse(ReadString("Укажите тип каталога (1-xml, 2-json,3-SQLite)"), out type);
+        } while (type < 1 || type > 3);
+
+        //Запросим имя каталога
+        string catalogName = ReadString("\nУкажите имя музыкального каталога?");
+
         string mcPath = MusicCatalogPath;
 
         if (!Path.Exists(mcPath)) Directory.CreateDirectory(mcPath);
 
-        return serializationType switch
+        return type switch
         {
-            1 or 2 => new MusicCatalog(MusicCatalogFullName(catalogName + (serializationType == 1 ? ".xml" : ".json"))),
+            1 => new MusicCatalog(new MCSerializerXml(MusicCatalogFullName(catalogName+".xml"))),
+            2 => new MusicCatalog(new MCSerializerJSon(MusicCatalogFullName(catalogName+".json"))),
             _ => new MusicCatalogSQLite(MusicCatalogFullName(catalogName+".db")),
         };
     }
